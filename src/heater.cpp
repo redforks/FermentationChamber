@@ -1,5 +1,6 @@
 #include <core.h>
 #include "heater.h"
+#include "read_temp.h"
 
 using namespace core;
 
@@ -15,15 +16,21 @@ uint32_t mLastActionTime; // milli seconds of last on/off since arduino boot.
 void* heaterPulseOnDelayHandler = NULL;
 
 void heaterPulseOn() {
-  uint32_t delay = millis() - mLastActionTime;
+  uint32_t delay = (millis() - mLastActionTime) / 1000;
   if (mLastPulseOn) {
-    if (delay >= 5000) {
+    uint32_t secs = 3 + (SETPOINT - readTempe()) / 5;
+    if (secs > 20) {
+      secs = 20;
+    }
+    if (delay >= secs) {
       mLastPulseOn = false;
+      Serial.println("off");
       digitalWrite(HEATER_PIN, LOW);
       mLastActionTime = millis();
     }
-  } else if (delay >= 200000 || millis() < 10000) {
+  } else if (delay >= 200 || millis() < 10000) {
     mLastPulseOn = true;
+    Serial.println("on");
     digitalWrite(HEATER_PIN, HIGH);
     mLastActionTime = millis();
   }
@@ -39,7 +46,7 @@ void switchHeater() {
   }
 
   if (heaterPulseOnDelayHandler == NULL) {
-    heaterPulseOnDelayHandler = clock::interval(5000, &heaterPulseOn);
+    heaterPulseOnDelayHandler = clock::interval(1000, &heaterPulseOn);
     heaterPulseOn();
   }
 }
